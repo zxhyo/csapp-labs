@@ -181,20 +181,34 @@ int tmin(void) {
  */
 //0111 1111 1111 1111 1111 1111 1111 1111
 //1000 0000 0000 0000 0000 0000 0000 0000
+
+//1111 1111 1111 1111 1111 1111 1111 1111
+//0000 0000 0000 0000 0000 0000 0000 0000
+//not easy
 int isTmax(int x) {
-  return !((~x) ^ (1 << 31));
+  return !((x + 0x1) ^ (~x)) & !(!(~x));
 }
 /* 
  * allOddBits - return 1 if all odd-numbered bits in word set to 1
  *   where bits are numbered from 0 (least significant) to 31 (most significant)
  *   Examples allOddBits(0xFFFFFFFD) = 0, allOddBits(0xAAAAAAAA) = 1
+ *   0xfffffffd
+ *   1111 1111 1111 1111 1111 1111 1111 1101
+ *   0xaaaaaaaa
+ *   1010 1010 1010 1010 1010 1010 1010 1010
+ * 
+ *   0010 1010 1010 1010 1010 1010 1010 1010
+ *   
  *   Legal ops: ! ~ & ^ | + << >>
  *   Max ops: 12
  *   Rating: 2
  */
 int allOddBits(int x) {
-  
-  return 2;
+  int tmp = 0xaa;
+  tmp = tmp << 8 | 0xaa;
+  tmp = tmp << 8 | 0xaa;
+  tmp = tmp << 8 | 0xaa;
+  return !((tmp & x) ^ tmp);
 }
 /* 
  * negate - return -x 
@@ -204,7 +218,7 @@ int allOddBits(int x) {
  *   Rating: 2
  */
 int negate(int x) {
-  return 2;
+  return (~x) + 1;
 }
 //3
 /* 
@@ -215,9 +229,18 @@ int negate(int x) {
  *   Legal ops: ! ~ & ^ | + << >>
  *   Max ops: 15
  *   Rating: 3
+ *   0x30
+ *   0000 0000 0000 0000 0000 0000 0011 0000
+ *   0x38
+ *   0000 0000 0000 0000 0000 0000 0011 1000
+ *   0x30
+ *   0000 0000 0000 0000 0000 0000 0011 0000
+ *   0x39
+ *   0000 0000 0000 0000 0000 0000 0011 1001
  */
 int isAsciiDigit(int x) {
-  return 2;
+
+  return (!((x >> 4) ^ 0x3)) & (!((x & 0xf) ^ 0x9) | !((x & 0xf) ^ 0x8) | !(x & 0x8));
 }
 /* 
  * conditional - same as x ? y : z 
@@ -227,7 +250,7 @@ int isAsciiDigit(int x) {
  *   Rating: 3
  */
 int conditional(int x, int y, int z) {
-  return 2;
+  return !x;
 }
 /* 
  * isLessOrEqual - if x <= y  then return 1, else return 0 
@@ -237,7 +260,7 @@ int conditional(int x, int y, int z) {
  *   Rating: 3
  */
 int isLessOrEqual(int x, int y) {
-  return 2;
+  return 0;
 }
 //4
 /* 
