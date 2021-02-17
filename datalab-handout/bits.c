@@ -12,7 +12,6 @@
  * it's not good practice to ignore compiler warnings, but in this
  * case it's OK.  
  */
-
 #if 0
 /*
  * Instructions to Students:
@@ -239,7 +238,6 @@ int negate(int x) {
  *   0000 0000 0000 0000 0000 0000 0011 1001
  */
 int isAsciiDigit(int x) {
-
   return (!((x >> 4) ^ 0x3)) & (!((x & 0xf) ^ 0x9) | !((x & 0xf) ^ 0x8) | !(x & 0x8));
 }
 /* 
@@ -250,7 +248,9 @@ int isAsciiDigit(int x) {
  *   Rating: 3
  */
 int conditional(int x, int y, int z) {
-  return !x;
+  x = !x;
+  x = (x << 31) >> 31;//
+  return (~x & y) | (x & z);
 }
 /* 
  * isLessOrEqual - if x <= y  then return 1, else return 0 
@@ -258,36 +258,70 @@ int conditional(int x, int y, int z) {
  *   Legal ops: ! ~ & ^ | + << >>
  *   Max ops: 24
  *   Rating: 3
+ *   0x80000000
+ *   1000 0000 0000 0000 0000 0000 0000 0000
+ *   0x7fffffff
+ *   0111 1111 1111 1111 1111 1111 1111 1111
+ *  ~ + 1
+ *   1000 0000 0000 0000 0000 0000 0000 0001
  */
 int isLessOrEqual(int x, int y) {
-  return 0;
+  int tmp1 = x >> 31 & 1;
+  int tmp2 = y >> 31 & 1;
+  int diff = x + (~y) + 1;
+  return (tmp1 & !tmp2) | ((!((tmp1) ^ (tmp2))) & ((diff >> 31) & 1)) | (!diff);
 }
 //4
 /* 
  * logicalNeg - implement the ! operator, using all of 
  *              the legal operators except !
  *   Examples: logicalNeg(3) = 0, logicalNeg(0) = 1
+ *   0000 0000 0000 0000 0000 0000 0000 0101
+ *   1000 0000 0000 0000 0000 0000 0000 0000
+ *   
  *   Legal ops: ~ & ^ | + << >>
  *   Max ops: 12
  *   Rating: 4 
  */
 int logicalNeg(int x) {
-  return 2;
+  return (~((x|(~x + 1)) >> 31))&1;
 }
-/* howManyBits - return the minimum number of bits required to represent x in
- *             two's complement
+/* howManyBits - return the minimum number of bits required to represent x in a two's complement
  *  Examples: howManyBits(12) = 5
+ *            12
+ *            01100
  *            howManyBits(298) = 10
+ *            298
+ *            0100101010
  *            howManyBits(-5) = 4
+ *            0000 0000 0000 0000 0000 0000 0000 0101
+ *            1111 1111 1111 1111 1111 1111 1111 1011
  *            howManyBits(0)  = 1
  *            howManyBits(-1) = 1
+ *            0000 0000 0000 0000 0000 0000 0000 0001
+ *            1111 1111 1111 1111 1111 1111 1111 1111
  *            howManyBits(0x80000000) = 32
+ *            1000 0000 0000 0000 0000 0000 0000 0000
  *  Legal ops: ! ~ & ^ | + << >>
  *  Max ops: 90
  *  Rating: 4
  */
 int howManyBits(int x) {
-  return 0;
+  int tmp16,tmp8,tmp4,tmp2,tmp1,tmp0;
+  int sign = x >> 31;
+  x = ((~x) & sign)|(x & (~sign));
+  tmp16 = !!(x >> 16) << 4;
+  x = x >> tmp16;
+  tmp8 = !!(x >> 8) << 3;
+  x = x >> tmp8;
+  tmp4 = !!(x >> 4) << 2;
+  x = x >> tmp4;
+  tmp2 = !!(x >> 2) << 1;
+  x = x >> tmp2;
+  tmp1 = !!(x >> 1);
+  x = x >> tmp1;
+  tmp0 = x;
+  return tmp16 + tmp8 + tmp4 + tmp2 + tmp1 + tmp0 + 1ll;
 }
 //float
 /* 
@@ -298,11 +332,31 @@ int howManyBits(int x) {
  *   single-precision floating point values.
  *   When argument is NaN, return argument
  *   Legal ops: Any integer/unsigned operations incl. ||, &&. also if, while
+ *   1111 1111 1000 0000 0000 0000 0000 0000
+
+ *   0000 0000 1000 0000 0000 0000 0000 0000
+ *   0000 0001 0000 0000 0000 0000 0000 0000
+ * 
+ * 
+ * 
+ *   0000 0000 0111 1111 1111 1111 1111 1111
+ *   0000 0000 1111 1111 1111 1111 1111 1110
  *   Max ops: 30
  *   Rating: 4
  */
 unsigned floatScale2(unsigned uf) {
-  return 2;
+  int exponent = (uf >> 23) & 0xff;//1
+  int significand = uf & 0x7fffff;//0x7fffff
+  //0
+  if(!exponent && !significand) return uf;
+  //NaN
+  if(!(exponent ^ 0xff)) {
+    return uf;
+  }
+  if(!exponent) {
+      return (uf & 0xff800000) | (significand << 1);
+  }
+  return (uf & 0x807fffff) | ((exponent + 1) << 23);
 }
 /* 
  * floatFloat2Int - Return bit-level equivalent of expression (int) f
@@ -315,9 +369,56 @@ unsigned floatScale2(unsigned uf) {
  *   Legal ops: Any integer/unsigned operations incl. ||, &&. also if, while
  *   Max ops: 30
  *   Rating: 4
+ *   1/000 0000 0/000 0000 0000 0000 0000 0000
+ *   0/000 0000 1/000 0000 0000 0000 0000 0000
+ *   0000 0001
+ *   -127
+ *   1000 0001
+ *   0xbf800000
+ *   1/0111 1111/000 0000 0000 0000 0000 0000
+ *   1/1111 1111/111 1111 1111 1111 1111 1111
+ *   0x7f000000
+ *   0/1111 1110/000 0000 0000 0000 0000 0000
+ *   127
+ *   0000 0000 1000 0000 0000 0000 0000 0000
+ *   0x80000000
+ *   1/0000 0000/000 0000 0000 0000 0000 0000
+ *   0x7effffff
+ *   0/111 1110 1/111 1111 1111 1111 1111 1111
+ *    126
+ *   1111 1111 1111 1111 1111 1111
+ *   1000 0000 0000 0000 0000 0000 0000 0000
  */
 int floatFloat2Int(unsigned uf) {
-  return 2;
+  int sign = (uf>>31) & 1;
+  int exponent = (uf >> 23) & 0xff;
+  int diff = exponent - 127;
+  int significand = uf & 0x7fffff;
+  int tmp = diff - 23;
+  int num = significand | 0x800000;
+  int result = num;
+  if(!(exponent ^ 0xff)) {
+    return 0x80000000;
+  }
+  if(!significand && !exponent) {
+    return 0;
+  }
+  if(diff < 0) return 0;
+  if(!diff) {
+    if(sign) {
+      return -1;
+    } else {
+      return 1;
+    }
+  }
+  while(tmp --) {
+    result = result << 1;
+  }
+  if(!result) {
+    return 0x80000000;
+  } else {
+    return result;
+  }
 }
 /* 
  * floatPower2 - Return bit-level equivalent of the expression 2.0^x
@@ -327,11 +428,56 @@ int floatFloat2Int(unsigned uf) {
  *   representation as the single-precision floating-point number 2.0^x.
  *   If the result is too small to be represented as a denorm, return
  *   0. If too large, return +INF.
- * 
+ *   2.0
+ *   0/100 0000 0/000 0000 0000 0000 0000 0000
+ *   0x3f800000
+ *   0/011 1111 1/000 0000 0000 0000 0000 0000
  *   Legal ops: Any integer/unsigned operations incl. ||, &&. Also if, while 
  *   Max ops: 30 
  *   Rating: 4
+ *   0x800000
+ *   0/000 0000 1/000 0000 0000 0000 0000 0001
+ *   0x7f800000
+ *   0/111 1111 1/000 0000 0000 0000 0000 0000
+ * 1
+ *   0x40000000
+ *   0010 0000 0000 0000 0000 0000 0000 0000
+ *   2
+ *   0x40800000
+ *   0010 0000 1000 0000 0000 0000 0000 0000
  */
 unsigned floatPower2(int x) {
-    return 2;
+  int sign = x >> 31;//0
+  int exponent = 1;
+  int significant = 0xffffff;
+  if(!x) {
+    return 0x3f800000;
+  }
+  if(sign) {
+    int tmp = (~x) + 1;
+    int diff = exponent - tmp;
+    int tmp2 = significant;
+    if(diff < 0) {
+      diff = (~diff) + 1;
+      while(diff --) {
+        tmp2 = tmp2 >> 1;
+        if(!tmp2) return 0;
+      }
+      return tmp2;
+    } else {
+      exponent = (diff + 127) << 23;
+      return exponent;
+    }
+
+  } else {//
+    int tmp = x;//2
+    int sum = exponent + tmp + 126;//2 + 1
+    if(sum > 0xff) {
+      return 0x7f800000;
+    } else {
+      return (sum) << 23;
+    }
+
+  }
+  return 2;
 }
